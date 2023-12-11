@@ -1,0 +1,87 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Photo Grid',
+      home: PhotoGrid(),
+    );
+  }
+}
+
+class Photo {
+  final int id;
+  final String title;
+  final String url;
+
+  Photo({required this.id, required this.title, required this.url});
+
+  factory Photo.fromJson(Map<String, dynamic> json) {
+    return Photo(
+      id: json['id'],
+      title: json['title'],
+      url: json['url'],
+    );
+  }
+}
+
+class PhotoGrid extends StatefulWidget {
+  @override
+  _PhotoGridState createState() => _PhotoGridState();
+}
+
+class _PhotoGridState extends State<PhotoGrid> {
+  late Future<List<Photo>> futurePhotos;
+
+  @override
+  void initState() {
+    super.initState();
+    futurePhotos = fetchPhotos();
+  }
+
+  Future<List<Photo>> fetchPhotos() async {
+    final response = await http.get(Uri.parse('https://jsonplaceholder.typicode.com/photos'));
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      List<Photo> photos = data.map((model) => Photo.fromJson(model)).toList();
+      return photos;
+    } else {
+      throw Exception('Failed to load photos');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Photo Grid'),
+      ),
+      body: Center(
+        child: FutureBuilder<List<Photo>>(
+          future: futurePhotos,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) {
+                  return Image.network(snapshot.data![index].url);
+                },
+              );
+            } else if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            }
+            return CircularProgressIndicator();
+          },
+        ),
+      ),
+    );
+  }
+}
